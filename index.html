@@ -208,7 +208,14 @@
         let completedTasks = [];
 
         function showTaskSelection() {
+            // Hide all other screens
             document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('taskReadyScreen').style.display = 'none';
+            document.getElementById('experimentScreen').style.display = 'none';
+            document.getElementById('taskCompleteScreen').style.display = 'none';
+            document.getElementById('completionScreen').style.display = 'none';
+            
+            // Show task selection screen
             document.getElementById('taskSelectionScreen').style.display = 'block';
             
             if (experimentStartTime === null) {

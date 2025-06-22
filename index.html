@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EEG Word Association Experiment</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .experiment-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .cue-display {
+            font-size: 72px;
+            font-weight: bold;
+            color: #333;
+            background-color: white;
+            padding: 80px 120px;
+            border-radius: 20px;
+            box-shadow: 0 6px 30px rgba(0,0,0,0.15);
+            text-align: center;
+            min-width: 400px;
+            min-height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .start-screen, .task-selection-screen, .task-ready-screen, .task-complete-screen, .completion-screen {
+            text-align: center;
+            background-color: white;
+            padding: 50px;
+            border-radius: 20px;
+            box-shadow: 0 6px 30px rgba(0,0,0,0.15);
+            max-width: 600px;
+        }
+
+        .button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+        }
+
+        .button:hover {
+            background-color: #0056b3;
+        }
+
+        .button-stop {
+            background-color: #dc3545;
+        }
+
+        .button-stop:hover {
+            background-color: #c82333;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 30px;
+            font-size: 14px;
+            color: #888;
+        }
+
+        .timestamp-log {
+            display: none; /* Hidden from participants */
+        }
+
+        .task-description {
+            text-align: left;
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="timestampLog" class="timestamp-log"></div>
+
+    <!-- Initial Start Screen -->
+    <div id="startScreen" class="start-screen">
+        <h1>EEG Word Association Experiment</h1>
+        <p>Ready to begin the experiment.</p>
+        <button class="button" onclick="showTaskSelection()">Start Experiment</button>
+    </div>
+
+    <!-- Task Selection Screen -->
+    <div id="taskSelectionScreen" class="task-selection-screen" style="display: none;">
+        <h2>Select Task to Run</h2>
+        <div class="button-group">
+            <button class="button" onclick="selectTask(1)">
+                Free Association<br>
+            </button>
+            <button class="button" onclick="selectTask(2)">
+                Semantic Relatedness<br>
+            </button>
+            <button class="button" onclick="selectTask(3)">
+                Letter Fluency<br>
+            </button>
+        </div>
+        <div style="margin-top: 30px;">
+            <button class="button" onclick="completeAllExperiments()" style="background-color: #28a745;">
+                All Tasks Complete - Finish Experiment
+            </button>
+        </div>
+    </div>
+
+    <!-- Task Ready Screen -->
+    <div id="taskReadyScreen" class="task-ready-screen" style="display: none;">
+        <h2 id="selectedTaskTitle">Task Selected</h2>
+        <div id="taskDescription" class="task-description">
+            <!-- Task description will be populated here -->
+        </div>
+        <p>Press the button below when participant is ready, then use RIGHT ARROW to advance through stimuli.</p>
+        <button class="button" onclick="startSelectedTask()">Start This Task</button>
+        <button class="button" onclick="showTaskSelection()" style="background-color: #6c757d;">Back to Task Selection</button>
+    </div>
+
+    <!-- Experiment Running Screen -->
+    <div id="experimentScreen" style="display: none;">
+        <div class="experiment-area">
+            <div class="cue-display" id="cueDisplay">•</div>
+            <div class="controls">
+                Press RIGHT ARROW (→) to advance | ESC to pause
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Complete Screen -->
+    <div id="taskCompleteScreen" class="task-complete-screen" style="display: none;">
+        <h2>Task Complete</h2>
+        <p id="taskCompleteMessage">All stimuli have been shown.</p>
+        <p>Wait for participant to finish their final response, then stop the task.</p>
+        <button class="button button-stop" onclick="stopTask()">Stop Task</button>
+    </div>
+
+    <!-- Final Completion Screen -->
+    <div id="completionScreen" class="completion-screen" style="display: none;">
+        <h1>Experiment Complete!</h1>
+        <p>Thank you for participating in the EEG word association study.</p>
+        <p>All stimulus presentation times have been logged for ERP analysis.</p>
+        <button class="button" onclick="downloadTimestamps()">Download Timestamps</button>
+    </div>
+
+    <script>
+        // Experiment data
+        const tasks = {
+            1: {
+                name: "Free Association",
+                description: "Participant will say the first word that comes to mind when they see each prompt.",
+                stimuli: [
+                    "ambition", "step", "plenty", "ball", "plant", "decision", "approve", "ground", 
+                    "crack", "religion", "culture", "metal", "doctor", "urgent", "monkey", 
+                    "screw", "comfortable", "letter", "pleasure", "mind"
+                ]
+            },
+            2: {
+                name: "Semantic Relatedness",
+                description: "Participant will rate how related these word pairs are on a scale of 1-10 (1 = completely unrelated, 10 = very related).",
+                stimuli: [
+                    "criticise - analysis", "break - bend", "extra - more", "make - create", "place - home",
+                    "cover - lid", "mail - bills", "bread - soft", "entry - point", "sympathy - empathy",
+                    "course - study", "contact - business", "test - screen", "detect - sniff", "build - blocks",
+                    "copy - follow", "desk - drawer", "tense - rigid", "maintain - hold", "children - kids"
+                ]
+            },
+            3: {
+                name: "Letter Fluency",
+                description: "Participant will generate as many words as possible that start with the given letter within one minute.",
+                stimuli: ["F", "A", "S"]
+            }
+        };
+
+        let selectedTask = null;
+        let currentStimulus = 0;
+        let experimentStartTime = null;
+        let taskStartTime = null;
+        let firstStimulusTime = null;
+        let timestamps = [];
+        let isPaused = false;
+        let completedTasks = [];
+
+        function showTaskSelection() {
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('taskSelectionScreen').style.display = 'block';
+            
+            if (experimentStartTime === null) {
+                experimentStartTime = Date.now();
+                logTimestamp('EXPERIMENT_STARTED');
+            }
+        }
+
+        function selectTask(taskNumber) {
+            selectedTask = taskNumber;
+            
+            document.getElementById('taskSelectionScreen').style.display = 'none';
+            document.getElementById('taskReadyScreen').style.display = 'block';
+            
+            // Update task ready screen
+            document.getElementById('selectedTaskTitle').textContent = `${tasks[taskNumber].name}`;
+            document.getElementById('taskDescription').innerHTML = `
+                <strong>Instructions:</strong><br>
+                ${tasks[taskNumber].description}<br><br>
+                <strong>Number of stimuli:</strong> ${tasks[taskNumber].stimuli.length}
+            `;
+            
+            logTimestamp('TASK_SELECTED', null, taskNumber);
+        }
+
+        function startSelectedTask() {
+            taskStartTime = Date.now();
+            firstStimulusTime = null; // Reset for each task
+            currentStimulus = 0;
+            
+            document.getElementById('taskReadyScreen').style.display = 'none';
+            document.getElementById('experimentScreen').style.display = 'block';
+            
+            logTimestamp('TASK_STARTED', null, selectedTask);
+            
+            // Show first stimulus immediately
+            showStimulus();
+        }
+
+        function showStimulus() {
+            if (isPaused) return;
+            
+            const stimulus = tasks[selectedTask].stimuli[currentStimulus];
+            document.getElementById('cueDisplay').textContent = stimulus;
+            
+            // Log stimulus presentation
+            logTimestamp('STIMULUS_ONSET', stimulus, selectedTask);
+        }
+
+        function nextStimulus() {
+            if (isPaused) return;
+            
+            logTimestamp('ADVANCE_TRIGGER', null, selectedTask);
+            
+            currentStimulus++;
+            
+            if (currentStimulus >= tasks[selectedTask].stimuli.length) {
+                // All stimuli shown, wait for manual stop
+                showTaskComplete();
+            } else {
+                showStimulus();
+            }
+        }
+
+        function showTaskComplete() {
+            document.getElementById('experimentScreen').style.display = 'none';
+            document.getElementById('taskCompleteScreen').style.display = 'block';
+            
+            document.getElementById('taskCompleteMessage').textContent = 
+                `All ${tasks[selectedTask].stimuli.length} stimuli for ${tasks[selectedTask].name} have been shown.`;
+            
+            logTimestamp('ALL_STIMULI_SHOWN', null, selectedTask);
+        }
+
+        function stopTask() {
+            logTimestamp('TASK_STOPPED', null, selectedTask);
+            completedTasks.push(selectedTask);
+            
+            document.getElementById('taskCompleteScreen').style.display = 'none';
+            document.getElementById('taskSelectionScreen').style.display = 'block';
+            
+            selectedTask = null;
+        }
+
+        function completeAllExperiments() {
+            logTimestamp('EXPERIMENT_COMPLETED');
+            
+            document.getElementById('taskSelectionScreen').style.display = 'none';
+            document.getElementById('completionScreen').style.display = 'block';
+        }
+
+        function logTimestamp(event, stimulus = null, task = null) {
+            const now = Date.now();
+            let relativeTimeMs;
+            
+            // For STIMULUS_ONSET events, use first stimulus as 00:00:00.000
+            if (event === 'STIMULUS_ONSET') {
+                if (firstStimulusTime === null) {
+                    firstStimulusTime = now; // Set first stimulus as time zero
+                    relativeTimeMs = 0;
+                } else {
+                    relativeTimeMs = now - firstStimulusTime;
+                }
+            } else {
+                // For other events, use first stimulus time as reference if available
+                if (firstStimulusTime !== null) {
+                    relativeTimeMs = now - firstStimulusTime;
+                } else {
+                    // If no stimulus shown yet, use task start time
+                    relativeTimeMs = now - (taskStartTime || experimentStartTime || now);
+                }
+            }
+            
+            // Convert to hh:mm:ss.000 format starting from 00:00:00.000
+            const totalSeconds = Math.floor(relativeTimeMs / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            const milliseconds = relativeTimeMs % 1000;
+            
+            const timeString = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
+            
+            const timestamp = {
+                event: event,
+                task: task || selectedTask,
+                stimulus: stimulus,
+                stimulusIndex: currentStimulus,
+                timestamp: now,
+                timeString: timeString,
+                relativeTime: relativeTimeMs,
+                taskRelativeTime: taskStartTime ? now - taskStartTime : null,
+                firstStimulusReference: firstStimulusTime
+            };
+            
+            timestamps.push(timestamp);
+            
+            // Update visual log (hidden from participants but still logged)
+            const logElement = document.getElementById('timestampLog');
+            if (logElement) {
+                logElement.innerHTML += `${timestamp.event}: T${timestamp.task}S${timestamp.stimulusIndex + 1} - ${timeString}<br>`;
+                logElement.scrollTop = logElement.scrollTop;
+            }
+            
+            console.log('Timestamp logged:', timestamp);
+        }
+
+        function downloadTimestamps() {
+            // Convert to CSV format
+            const headers = ['event', 'task', 'stimulus', 'stimulusIndex', 'timeString', 'relativeTime', 'timestamp'];
+            const csvRows = [headers.join(',')];
+            
+            timestamps.forEach(row => {
+                const values = [
+                    row.event,
+                    row.task || '',
+                    row.stimulus ? `"${row.stimulus}"` : '', // Quote stimulus in case it contains commas
+                    row.stimulusIndex,
+                    row.timeString,
+                    row.relativeTime,
+                    row.timestamp
+                ];
+                csvRows.push(values.join(','));
+            });
+            
+            const csvString = csvRows.join('\n');
+            const dataBlob = new Blob([csvString], {type: 'text/csv'});
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `eeg_timestamps_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.csv`;
+            link.click();
+            
+            URL.revokeObjectURL(url);
+        }
+
+        // Keyboard event handlers
+        document.addEventListener('keydown', function(event) {
+            switch(event.key) {
+                case 'ArrowRight':
+                    if (document.getElementById('experimentScreen').style.display !== 'none') {
+                        event.preventDefault();
+                        nextStimulus();
+                    }
+                    break;
+                    
+                case 'Escape':
+                    if (document.getElementById('experimentScreen').style.display !== 'none') {
+                        isPaused = !isPaused;
+                        if (isPaused) {
+                            logTimestamp('EXPERIMENT_PAUSED');
+                            document.getElementById('cueDisplay').textContent = 'PAUSED - Press ESC to resume';
+                        } else {
+                            logTimestamp('EXPERIMENT_RESUMED');
+                            showStimulus();
+                        }
+                    }
+                    break;
+            }
+        });
+
+        // Prevent accidental page refresh
+        window.addEventListener('beforeunload', function(event) {
+            if (timestamps.length > 0) {
+                event.preventDefault();
+                event.returnValue = '';
+            }
+        });
+    </script>
+</body>
+</html>
